@@ -314,7 +314,7 @@ const AdminDashboardPage: React.FC = () => {
     <>
       <PageTitle title={t('adminDashboard_title')} subtitle={t('adminDashboard_subtitle')} icon={<ChartBarIcon className="h-8 w-8"/>}/>
       
-      <Card title={t('adminDashboard_geminiAssistantTitle')} className="mb-6">
+      <Card className="mb-6">
         <GeminiAssistantWidget />
       </Card>
       

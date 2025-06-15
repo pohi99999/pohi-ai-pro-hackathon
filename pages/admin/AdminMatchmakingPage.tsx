@@ -6,29 +6,26 @@ import AiFeatureButton from '../../components/AiFeatureButton';
 import Textarea from '../../components/Textarea';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SimpleBarChart from '../../components/SimpleBarChart';
-import { 
-    MatchmakingSuggestion, 
-    DisputeResolutionSuggestion, 
-    DemandItem, 
-    StockItem, 
+import MatchmakingVisualization from '../../components/MatchmakingVisualization'; // New Import
+import {
+    MatchmakingSuggestion,
+    DisputeResolutionSuggestion,
+    DemandItem,
+    StockItem,
     DemandStatus,
     StockStatus,
-    MockCompany, 
-    UserRole 
+    MockCompany,
+    UserRole,
+    TranslationKey // Added import
 } from '../../types';
-import { 
-    ArrowsRightLeftIcon, 
-    ScaleIcon, 
-    DocumentTextIcon, 
-    InformationCircleIcon, 
-    HashtagIcon, 
-    CalendarDaysIcon, 
-    ArchiveBoxIcon, 
-    BeakerIcon, 
-    BuildingStorefrontIcon, 
+import {
+    ArrowsRightLeftIcon,
+    ScaleIcon,
+    InformationCircleIcon,
     SparklesIcon,
     BanknotesIcon,
-    ShieldCheckIcon
+    ShieldCheckIcon,
+    BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { useLocale } from '../../LocaleContext';
@@ -86,8 +83,8 @@ const getStockStatusBadgeColor = (status?: StockStatus): string => {
 const AdminMatchmakingPage: React.FC = () => {
   const { t, locale } = useLocale();
   const [isLoadingAi, setIsLoadingAi] = useState<Record<string, boolean>>({});
-  const [state, setState] = useState<AdminMatchmakingState>({ 
-    isLoadingDemandsList: true, 
+  const [state, setState] = useState<AdminMatchmakingState>({
+    isLoadingDemandsList: true,
     allDemands: [],
     isLoadingStockList: true,
     allStockItems: [],
@@ -95,7 +92,7 @@ const AdminMatchmakingPage: React.FC = () => {
     mockCompanies: []
   });
 
-  const parseJsonFromGeminiResponse = <T,>(text: string, featureNameKey: string): T | string => {
+  const parseJsonFromGeminiResponse = <T,>(text: string, featureNameKey: TranslationKey): T | string => {
     let jsonStr = text.trim();
     const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
     const match = jsonStr.match(fenceRegex);
@@ -105,8 +102,8 @@ const AdminMatchmakingPage: React.FC = () => {
     try {
       return JSON.parse(jsonStr) as T;
     } catch (e) {
-      console.error(`Failed to parse JSON response for ${t(featureNameKey as any)}:`, e, "Raw text:", text);
-      return t('customerNewDemand_error_failedToParseJson', { featureName: t(featureNameKey as any), rawResponse: text.substring(0,150) });
+      console.error(`Failed to parse JSON response for ${t(featureNameKey)}:`, e, "Raw text:", text);
+      return t('customerNewDemand_error_failedToParseJson', { featureName: t(featureNameKey), rawResponse: text.substring(0,150) });
     }
   };
 
@@ -116,45 +113,64 @@ const AdminMatchmakingPage: React.FC = () => {
     const demandsRaw = localStorage.getItem(CUSTOMER_DEMANDS_STORAGE_KEY);
     const stockRaw = localStorage.getItem(MANUFACTURER_STOCK_STORAGE_KEY);
 
-    const demands: DemandItem[] = demandsRaw ? JSON.parse(demandsRaw) : [];
-    const stockItems: StockItem[] = stockRaw ? JSON.parse(stockRaw) : [];
-
-    const productTermKey = 'productType_acaciaDebarkedSandedPost';
-    const productTerm = t(productTermKey).toLowerCase(); 
+    const allDemands: DemandItem[] = demandsRaw ? JSON.parse(demandsRaw) : [];
+    const allStockItems: StockItem[] = stockRaw ? JSON.parse(stockRaw) : [];
     const promptLang = locale === 'hu' ? 'Hungarian' : 'English';
 
-    const acaciaDemands = demands.filter(d => 
-      d.status === DemandStatus.RECEIVED && 
-      (d.notes?.toLowerCase().includes(productTerm) || d.diameterType.toLowerCase().includes(productTerm) || d.notes?.toLowerCase().includes("akác oszlop") || d.notes?.toLowerCase().includes("acacia post"))
-    );
-    const acaciaStock = stockItems.filter(s => 
-      s.status === StockStatus.AVAILABLE && 
-      (s.notes?.toLowerCase().includes(productTerm) || s.diameterType.toLowerCase().includes(productTerm) || s.notes?.toLowerCase().includes("akác oszlop") || s.notes?.toLowerCase().includes("acacia post"))
-    );
+    const activeDemands = allDemands.filter(d => d.status === DemandStatus.RECEIVED);
+    const availableStock = allStockItems.filter(s => s.status === StockStatus.AVAILABLE);
 
-    if (acaciaDemands.length === 0 || acaciaStock.length === 0) {
+    if (activeDemands.length === 0 || availableStock.length === 0) {
       return t('adminMatchmaking_noPairingSuggestions');
     }
     
-    const relevantDemandData = acaciaDemands.map(d => ({id: d.id, diameterFrom: d.diameterFrom, diameterTo: d.diameterTo, length: d.length, quantity: d.quantity, notes: d.notes?.substring(0,100), submittedByCompanyName: d.submittedByCompanyName}));
-    const relevantStockData = acaciaStock.map(s => ({id: s.id, diameterFrom: s.diameterFrom, diameterTo: s.diameterTo, length: s.length, quantity: s.quantity, price: s.price, notes: s.notes?.substring(0,100), uploadedByCompanyName: s.uploadedByCompanyName}));
+    const MAX_ITEMS_TO_SEND = 30;
+    const relevantDemandData = activeDemands.slice(0, MAX_ITEMS_TO_SEND).map(d => ({
+        id: d.id,
+        diameterType: d.diameterType,
+        diameterFrom: d.diameterFrom,
+        diameterTo: d.diameterTo,
+        length: d.length,
+        quantity: d.quantity,
+        notes: d.notes?.substring(0,100),
+        submittedByCompanyName: d.submittedByCompanyName,
+        cubicMeters: d.cubicMeters
+    }));
+    const relevantStockData = availableStock.slice(0, MAX_ITEMS_TO_SEND).map(s => ({
+        id: s.id,
+        diameterType: s.diameterType,
+        diameterFrom: s.diameterFrom,
+        diameterTo: s.diameterTo,
+        length: s.length,
+        quantity: s.quantity,
+        price: s.price,
+        notes: s.notes?.substring(0,100),
+        uploadedByCompanyName: s.uploadedByCompanyName,
+        cubicMeters: s.cubicMeters,
+        sustainabilityInfo: s.sustainabilityInfo?.substring(0,100)
+    }));
 
 
-    const prompt = `You are an AI assistant for a timber trading platform specializing in "${productTerm}" products.
-Based on the following Customer Demands and Manufacturer Stock, identify potential pairings for "${productTerm}" products.
+    const prompt = `You are an AI assistant for a timber trading platform.
+Based on the following active Customer Demands and available Manufacturer Stock, identify the most promising pairings for various timber products.
 Provide your response as a JSON array in ${promptLang}. Each object should represent a pairing and include the following fields:
 - "demandId": string (ID of the demand)
 - "stockId": string (ID of the stock item)
-- "reason": string (short justification in ${promptLang} for why the pairing is good. Consider matching dimensions and quantities. IF A DEMAND IS SMALLER THAN THE STOCK, OR A STOCK ITEM COULD SATISFY MULTIPLE SMALL DEMANDS, EXPLICITLY MENTION THE POSSIBILITY OF CONSOLIDATION IN THE REASONING. For example: "This 10-piece demand can be well combined with other small items into a larger shipment from the manufacturer's larger stock." or "The manufacturer's 200-piece stock could satisfy multiple smaller demands of similar size, making consolidated shipping optimal.")
-- "matchStrength": string (e.g., "High", "Medium", "Low", or a numeric value like "85%")
-- "similarityScore": number (optional, numeric similarity score between 0.0 and 1.0)
+- "reason": string (A detailed justification in ${promptLang} for why the pairing is good. Consider:
+    - Matching dimensions (diameter, length) and quantities.
+    - If it's a niche item or potentially slow-moving stock, highlight this.
+    - If quantities differ significantly (e.g., small demand, large stock), EXPLICITLY MENTION THE POSSIBILITY OF CONSOLIDATION. Example: "This 10-piece demand can be well combined with other small items from the manufacturer's larger stock of 200 pieces." or "The manufacturer's stock could satisfy multiple smaller demands."
+    - Highlight if specific notes from demand/stock align.
+  )
+- "matchStrength": string (A qualitative assessment of the match strength, e.g., "High", "Medium", "Low", or a numeric percentage like "85%")
+- "similarityScore": number (A numeric similarity score between 0.0 and 1.0 based on overall fit. For example, 0.9 for a very strong match, 0.5 for a moderate match.)
 
 The response MUST ONLY contain the JSON array.
 
-Customer Demands (Demands):
+Customer Demands (Top ${relevantDemandData.length} active items):
 ${JSON.stringify(relevantDemandData, null, 2)}
 
-Manufacturer Stock (Stock Items):
+Manufacturer Stock (Top ${relevantStockData.length} available items):
 ${JSON.stringify(relevantStockData, null, 2)}
 `;
 
@@ -164,7 +180,7 @@ ${JSON.stringify(relevantStockData, null, 2)}
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
-      const parsedResult = parseJsonFromGeminiResponse<Omit<MatchmakingSuggestion, 'id'>[]>(response.text, "adminMatchmaking_requestAiMatchmakingSuggestions");
+      const parsedResult = parseJsonFromGeminiResponse<Omit<MatchmakingSuggestion, 'id'>[]>(response.text, "adminMatchmaking_requestMatchmakingSuggestions");
 
       if (typeof parsedResult === 'string') return parsedResult;
 
@@ -198,7 +214,6 @@ Example of desired response format (only return lines starting with hyphen):
 - Suggestion 3: Offer partial compensation or a discount for quicker resolution.`;
 
     try {
-      // setIsLoadingAi(prev => ({ ...prev, disputeResolutionSuggestions: true })); // Not needed, handled by handleAiFeatureClick
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-04-17",
         contents: prompt,
@@ -215,18 +230,16 @@ Example of desired response format (only return lines starting with hyphen):
       }
       
       const fallbackMessage = t('adminMatchmaking_error_failedToParseDisputeSuggestions', {
-        rawResponse: (rawText && rawText.length > 0 && !rawText.toLowerCase().includes("nem tudok segíteni") && !rawText.toLowerCase().includes("i cannot assist")) 
-            ? (rawText.length > 150 ? rawText.substring(0,150) + "..." : rawText) 
-            : t('adminMatchmaking_noRelevantSuggestion') 
+        rawResponse: (rawText && rawText.length > 0 && !rawText.toLowerCase().includes("nem tudok segíteni") && !rawText.toLowerCase().includes("i cannot assist"))
+            ? (rawText.length > 150 ? rawText.substring(0,150) + "..." : rawText)
+            : t('adminMatchmaking_noRelevantSuggestion')
       });
       return [{ id: 'parse-fail', suggestion: fallbackMessage }];
 
     } catch (error) {
       console.error("Error generating dispute resolution suggestions with Gemini:", error);
       return [{ id: 'api-error', suggestion: t('adminMatchmaking_error_disputeResolutionGeneric') }];
-    } /*finally { // Not needed, handled by handleAiFeatureClick
-      setIsLoadingAi(prev => ({ ...prev, disputeResolutionSuggestions: false }));
-    }*/
+    }
   };
 
 
@@ -235,11 +248,11 @@ Example of desired response format (only return lines starting with hyphen):
     aiOperationKey: string
   ) => {
     setIsLoadingAi(prev => ({ ...prev, [aiOperationKey]: true }));
-     setState(prev => ({ 
-        ...prev, 
+     setState(prev => ({
+        ...prev,
         matchmakingSuggestions: featureKey === 'matchmakingSuggestions' ? undefined : prev.matchmakingSuggestions,
         disputeResolutionSuggestions: featureKey === 'disputeResolutionSuggestions' ? undefined : prev.disputeResolutionSuggestions,
-        currentAiFeatureKey: aiOperationKey 
+        currentAiFeatureKey: aiOperationKey
     }));
 
 
@@ -252,13 +265,13 @@ Example of desired response format (only return lines starting with hyphen):
                 result = await generateDisputeResolutionSuggestionsWithGemini(state.disputeDetails || '');
             }
             setState(prev => ({ ...prev, [featureKey]: result }));
-        } catch (error) { 
+        } catch (error) {
             console.error(`Error in AI feature ${featureKey}:`, error);
             const errorMessage = t('adminMatchmaking_error_criticalProcessingError');
             if (featureKey === 'disputeResolutionSuggestions') {
                 setState(prev => ({ ...prev, disputeResolutionSuggestions: [{id: 'error-catch', suggestion: errorMessage}] }));
             } else if (featureKey === 'matchmakingSuggestions') {
-                 setState(prev => ({ ...prev, matchmakingSuggestions: errorMessage })); // Set error string
+                 setState(prev => ({ ...prev, matchmakingSuggestions: errorMessage }));
             }
         } finally {
              setIsLoadingAi(prev => ({ ...prev, [aiOperationKey]: false}));
@@ -327,9 +340,8 @@ Example of desired response format (only return lines starting with hyphen):
   };
 
   const isAnyAiLoading = Object.values(isLoadingAi).some(s => s);
-
-  const getDemandById = (id: string): DemandItem | undefined => state.allDemands?.find(d => d.id === id || d.id.includes(id) || id.includes(d.id));
-  const getStockById = (id: string): StockItem | undefined => state.allStockItems?.find(s => s.id === id || (s.id && s.id.includes(id)) || (s.id && id.includes(s.id)));
+  const activeDemands = state.allDemands?.filter(d => d.status === DemandStatus.RECEIVED) || [];
+  const availableStock = state.allStockItems?.filter(s => s.status === StockStatus.AVAILABLE) || [];
 
 
   return (
@@ -342,61 +354,32 @@ Example of desired response format (only return lines starting with hyphen):
 
       <h2 className="text-xl font-semibold text-white mt-2 mb-4 border-b border-slate-700 pb-2">{t('adminStock_aiToolsTitle')}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card title={t('adminMatchmaking_requestAiMatchmakingSuggestions', {productName: t('productType_acaciaDebarkedSandedPost')})}>
-          <p className="text-sm text-slate-300 mb-3">{t('adminMatchmaking_aiMatchmakingDescription', {productName: t('productType_acaciaDebarkedSandedPost')})}</p>
+        <Card title={t('adminMatchmaking_requestMatchmakingSuggestions', {productName: ''}).replace('(AI for )','(AI)')}>
+          <p className="text-sm text-slate-300 mb-3">{t('adminMatchmaking_aiMatchmakingDescription', {productName: t('adminMatchmaking_title')}).replace(" '{{productName}}' "," ")}</p>
           <AiFeatureButton
-            text={t('adminMatchmaking_requestAiMatchmakingSuggestions', {productName: t('productType_acaciaDebarkedSandedPost')})}
+            text={t('adminMatchmaking_requestMatchmakingSuggestions', {productName: ''})}
             onClick={() => handleAiFeatureClick('matchmakingSuggestions', 'aiPairingOp')}
             isLoading={isLoadingAi.aiPairingOp}
-            disabled={!ai || isAnyAiLoading}
+            disabled={!ai || isAnyAiLoading || activeDemands.length === 0 || availableStock.length === 0}
             leftIcon={<SparklesIcon className="h-5 w-5 text-yellow-400" />}
           />
+          { (activeDemands.length === 0 || availableStock.length === 0) && !isLoadingAi.aiPairingOp &&
+            <p className="text-xs text-amber-300 mt-2">{t('adminMatchmaking_noPairingSuggestions')}</p>
+          }
           {isLoadingAi.aiPairingOp && state.currentAiFeatureKey === 'aiPairingOp' && <LoadingSpinner text={t('adminStock_generatingSuggestions')} />}
+          
           {state.matchmakingSuggestions && !isLoadingAi.aiPairingOp && state.currentAiFeatureKey === 'aiPairingOp' && (
-             <div className="mt-4 space-y-3 max-h-96 overflow-y-auto pr-2">
+             <div className="mt-4">
               {typeof state.matchmakingSuggestions === 'string' ? (
                 <p className="text-sm text-red-300 p-3 bg-red-900/30 rounded">{state.matchmakingSuggestions}</p>
               ) : state.matchmakingSuggestions.length === 0 ? (
                 <p className="text-sm text-slate-400 p-3 bg-slate-700/50 rounded">{t('adminMatchmaking_noPairingSuggestions')}</p>
-              ) : (
-                state.matchmakingSuggestions.map(suggestion => {
-                  const demand = getDemandById(suggestion.demandId);
-                  const stock = getStockById(suggestion.stockId);
-                  return (
-                    <Card key={suggestion.id} title={t('adminMatchmaking_suggestedPairing')} className="bg-slate-700/50 !shadow-md">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                            {/* Demand Details */}
-                            <div className="p-2 bg-slate-600/40 rounded">
-                                <h6 className="font-semibold text-cyan-300 mb-1">{t('adminMatchmaking_pairedDemand')}: {demand?.id.substring(0,10)}...</h6>
-                                {demand ? (
-                                    <>
-                                        {demand.submittedByCompanyName && <p className="text-slate-300"><BuildingStorefrontIcon className="h-4 w-4 inline mr-1 text-slate-400"/>{demand.submittedByCompanyName}</p>}
-                                        <p className="text-slate-300">{demand.diameterType}, Ø{demand.diameterFrom}-{demand.diameterTo}cm, {demand.length}m, {demand.quantity}pcs</p>
-                                        {demand.notes && <p className="text-slate-400 italic truncate" title={demand.notes}>"{demand.notes}"</p>}
-                                    </>
-                                ) : <p className="text-slate-400">{t('adminMatchmaking_demand')} {suggestion.demandId} {t('error')}</p>}
-                            </div>
-                            {/* Stock Details */}
-                            <div className="p-2 bg-slate-600/40 rounded">
-                                <h6 className="font-semibold text-emerald-300 mb-1">{t('adminMatchmaking_pairedStock')}: {stock?.id?.substring(0,10)}...</h6>
-                                {stock ? (
-                                    <>
-                                        {stock.uploadedByCompanyName && <p className="text-slate-300"><BuildingStorefrontIcon className="h-4 w-4 inline mr-1 text-slate-400"/>{stock.uploadedByCompanyName}</p>}
-                                        <p className="text-slate-300">{stock.diameterType}, Ø{stock.diameterFrom}-{stock.diameterTo}cm, {stock.length}m, {stock.quantity}pcs</p>
-                                        {stock.price && <p className="text-slate-300"><BanknotesIcon className="h-4 w-4 inline mr-1 text-green-400"/>{stock.price}</p>}
-                                        {stock.notes && <p className="text-slate-400 italic truncate" title={stock.notes}>"{stock.notes}"</p>}
-                                    </>
-                                ) : <p className="text-slate-400">{t('adminMatchmaking_stock')} {suggestion.stockId} {t('error')}</p>}
-                            </div>
-                        </div>
-                        <div className="mt-2 p-2 bg-slate-600/30 rounded">
-                            <p className="text-xs text-slate-300 whitespace-pre-wrap"><strong className="text-yellow-300">{t('adminMatchmaking_reason')}</strong> {suggestion.reason}</p>
-                            {suggestion.matchStrength && <p className="text-xs text-yellow-300 mt-0.5"><strong className="text-yellow-300">{t('adminMatchmaking_matchStrength')}</strong> {suggestion.matchStrength}</p>}
-                            {suggestion.similarityScore && <p className="text-xs text-yellow-300 mt-0.5"><strong className="text-yellow-300">{t('adminMatchmaking_similarityScoreLabel') || 'Similarity Score:'}</strong> {(suggestion.similarityScore * 100).toFixed(0)}%</p>}
-                        </div>
-                    </Card>
-                  );
-                })
+              ) : state.allDemands && state.allStockItems && (
+                <MatchmakingVisualization
+                    suggestions={state.matchmakingSuggestions}
+                    demands={state.allDemands}
+                    stockItems={state.allStockItems}
+                />
               )}
             </div>
           )}
@@ -413,7 +396,7 @@ Example of desired response format (only return lines starting with hyphen):
           />
           <AiFeatureButton
             text={t('adminMatchmaking_requestResolutionSuggestions')}
-            onClick={() => handleAiFeatureClick('disputeResolutionSuggestions', 'disputeResOp')}
+            onClick={() => handleAiFeatureClick('disputeResolutionSuggestions', "disputeResOp")}
             isLoading={isLoadingAi.disputeResOp}
             disabled={Boolean(!ai || !state.disputeDetails || (state.disputeDetails?.trim().length || 0) < 10 || isAnyAiLoading)}
             aria-label={t('adminMatchmaking_requestResolutionSuggestions')}
@@ -437,11 +420,11 @@ Example of desired response format (only return lines starting with hyphen):
       <Card title={t('adminMatchmaking_demandsByCompanyTitle')} className="mb-6">
         {state.isLoadingCompanies || state.isLoadingDemandsList ? (
           <LoadingSpinner text={t('adminMatchmaking_loadingCompanyData')} />
-        ) : !state.mockCompanies || state.mockCompanies.filter(c => c.role === UserRole.CUSTOMER).length === 0 ? ( 
+        ) : !state.mockCompanies || state.mockCompanies.filter(c => c.role === UserRole.CUSTOMER).length === 0 ? (
           <p className="text-slate-400 p-4">{t('adminMatchmaking_noCompaniesFound')}</p>
         ) : (
           <div className="space-y-4 max-h-[600px] overflow-y-auto p-1">
-            {state.mockCompanies.filter(c => c.role === UserRole.CUSTOMER).map(company => { 
+            {state.mockCompanies.filter(c => c.role === UserRole.CUSTOMER).map(company => {
               const companyDemands = state.allDemands?.filter(d => d.submittedByCompanyId === company.id) || [];
               const totalCubicMeters = companyDemands.reduce((sum, d) => sum + (d.cubicMeters || 0), 0);
               return (

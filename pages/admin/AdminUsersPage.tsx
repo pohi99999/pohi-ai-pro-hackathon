@@ -10,10 +10,10 @@ import Button from '../../components/Button';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { MOCK_AI_RESPONSES, CUSTOMER_DEMANDS_STORAGE_KEY, MANUFACTURER_STOCK_STORAGE_KEY, MOCK_COMPANIES_STORAGE_KEY } from '../../constants';
 import { RECIPIENT_TYPE_OPTIONS, DIAMETER_TYPE_OPTIONS, getTranslatedUserRole } from '../../locales';
-import { UsersIcon, ChatBubbleLeftEllipsisIcon, ShieldCheckIcon, UserGroupIcon, PlusCircleIcon, BuildingStorefrontIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import { UsersIcon, ChatBubbleLeftEllipsisIcon, ShieldCheckIcon, UserGroupIcon, PlusCircleIcon, BuildingStorefrontIcon, BeakerIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { useLocale } from '../../LocaleContext';
-import { TranslationKey, MockCompany, UserRole, DemandItem, StockItem, DemandStatus, StockStatus, ProductFeatures } from '../../types';
+import { TranslationKey, MockCompany, UserRole, DemandItem, StockItem, DemandStatus, StockStatus, ProductFeatures, GeneratedDataReport } from '../../types';
 
 
 let ai: GoogleGenAI | null = null;
@@ -50,7 +50,7 @@ interface AdminUsersState {
   companyActionFormLoading: boolean;
 
   dataGenerationLoading: boolean;
-  dataGenerationFeedback: string | null;
+  generatedDataReport: GeneratedDataReport | null;
 }
 
 const initialCompanyActionFormData = {
@@ -81,7 +81,7 @@ const AdminUsersPage: React.FC = () => {
     companyActionFormData: { ...initialCompanyActionFormData },
     companyActionFormLoading: false,
     dataGenerationLoading: false,
-    dataGenerationFeedback: null,
+    generatedDataReport: null,
   });
 
   useEffect(() => {
@@ -338,14 +338,17 @@ The response should only contain the list, with each item on a new line, startin
   };
 
   const handleGenerateSimulatedData = () => {
-    setState(prev => ({ ...prev, dataGenerationLoading: true, dataGenerationFeedback: null }));
+    setState(prev => ({ ...prev, dataGenerationLoading: true, generatedDataReport: null }));
 
     let currentMockCompanies = [...state.mockCompanies];
-    const generatedCompanies: MockCompany[] = [];
+    const initialCompanyCount = currentMockCompanies.length;
     const productName = t('productType_acaciaDebarkedSandedPost'); 
 
     let customers = currentMockCompanies.filter(c => c.role === UserRole.CUSTOMER);
     let manufacturers = currentMockCompanies.filter(c => c.role === UserRole.MANUFACTURER);
+    
+    let newCustomersCount = 0;
+    let newManufacturersCount = 0;
 
     for (let i = customers.length; i < 2; i++) {
         const newCustomer: MockCompany = { 
@@ -354,8 +357,9 @@ The response should only contain the list, with each item on a new line, startin
             role: UserRole.CUSTOMER,
             address: { city: `${t('city_sample')} ${i+1}`, country: t('country_sample') }
         };
-        generatedCompanies.push(newCustomer);
+        currentMockCompanies.push(newCustomer);
         customers.push(newCustomer);
+        newCustomersCount++;
     }
     for (let i = manufacturers.length; i < 2; i++) {
         const newMan: MockCompany = { 
@@ -364,12 +368,12 @@ The response should only contain the list, with each item on a new line, startin
             role: UserRole.MANUFACTURER,
             address: { city: `${t('city_sample')} ${t('userRole_MANUFACTURER')} ${i+1}`, country: t('country_sample') }
         };
-        generatedCompanies.push(newMan);
+        currentMockCompanies.push(newMan);
         manufacturers.push(newMan);
+        newManufacturersCount++;
     }
     
-    if (generatedCompanies.length > 0) {
-        currentMockCompanies = [...currentMockCompanies, ...generatedCompanies];
+    if (currentMockCompanies.length > initialCompanyCount) {
         saveMockCompanies(currentMockCompanies);
         setState(prev => ({...prev, mockCompanies: currentMockCompanies}));
     }
@@ -449,16 +453,18 @@ The response should only contain the list, with each item on a new line, startin
         setState(prev => ({ 
             ...prev, 
             dataGenerationLoading: false, 
-            dataGenerationFeedback: t('adminUsers_dataGenerationSuccess_specific', { 
-                demandCount: generatedDemands.length, 
-                stockCount: generatedStockItems.length,
-                companyCount: customers.length + manufacturers.length,
+            generatedDataReport: {
+                newCustomers: newCustomersCount,
+                newManufacturers: newManufacturersCount,
+                newDemands: generatedDemands.length,
+                newStockItems: generatedStockItems.length,
                 productName: productName
-            })
+            }
         }));
     } catch (error) {
         console.error("Error saving simulated data:", error);
-        setState(prev => ({ ...prev, dataGenerationLoading: false, dataGenerationFeedback: t('adminUsers_dataGenerationFailure') }));
+        setState(prev => ({ ...prev, dataGenerationLoading: false, generatedDataReport: null }));
+        alert(t('adminUsers_dataGenerationFailure'));
     }
   };
   
@@ -532,7 +538,7 @@ The response should only contain the list, with each item on a new line, startin
             {state.mockCompanies.length === 0 ? (
                 <p className="text-sm text-slate-400">{t('adminUsers_noCompanies')}</p>
             ) : (
-                <ul className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <ul className="space-y-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
                     {state.mockCompanies.map(company => (
                         <li key={company.id} className="p-3 bg-slate-700/70 rounded-md">
                             <div className="flex justify-between items-start">
@@ -633,10 +639,37 @@ The response should only contain the list, with each item on a new line, startin
                 {t('adminUsers_generateAcaciaDataButton', {productName: t('productType_acaciaDebarkedSandedPost')})}
             </Button>
             {state.dataGenerationLoading && <LoadingSpinner text={t('adminUsers_dataGenerationInProgress')} />}
-            {state.dataGenerationFeedback && !state.dataGenerationLoading && (
-                <div className={`mt-4 p-3 rounded text-sm ${state.dataGenerationFeedback.includes(t('error')) || state.dataGenerationFeedback.includes(t('adminUsers_dataGenerationFailure')) ? 'bg-red-800/80 text-red-200' : 'bg-green-800/80 text-green-200'}`}>
-                    {state.dataGenerationFeedback}
+            
+            {state.generatedDataReport && !state.dataGenerationLoading && (
+                <div className="mt-4 p-4 bg-slate-700/50 rounded-lg border border-green-700">
+                    <h4 className="text-md font-semibold text-green-300 mb-3 flex items-center">
+                        <CheckCircleIcon className="h-6 w-6 mr-2"/>
+                        {t('adminUsers_dataGenerationReport_title')}
+                    </h4>
+                    <ul className="space-y-1.5 text-sm text-slate-200">
+                        <li>{t('adminUsers_dataGenerationReport_product', { productName: state.generatedDataReport.productName })}</li>
+                        {(state.generatedDataReport.newCustomers > 0 || state.generatedDataReport.newManufacturers > 0) && (
+                            <li>{t('adminUsers_dataGenerationReport_companies', { 
+                                customerCount: state.generatedDataReport.newCustomers, 
+                                manufacturerCount: state.generatedDataReport.newManufacturers 
+                            })}</li>
+                        )}
+                        <li>{t('adminUsers_dataGenerationReport_demands', { demandCount: state.generatedDataReport.newDemands })}</li>
+                        <li>{t('adminUsers_dataGenerationReport_stock', { stockCount: state.generatedDataReport.newStockItems })}</li>
+                    </ul>
+                    <p className="text-xs text-slate-400 mt-3">
+                        {t('adminUsers_dataGenerationReport_info')}
+                    </p>
                 </div>
+            )}
+            {!state.generatedDataReport && !state.dataGenerationLoading && state.dataGenerationLoading === false && ( // Show if button pressed but failed (explicitly check loading === false)
+                 <div className="mt-4 p-4 bg-red-800/50 rounded-lg border border-red-700">
+                    <h4 className="text-md font-semibold text-red-300 mb-2 flex items-center">
+                        <InformationCircleIcon className="h-6 w-6 mr-2"/>
+                        {t('adminUsers_dataGenerationFailure')}
+                    </h4>
+                    <p className="text-sm text-red-200">{t('error')}</p>
+                 </div>
             )}
         </Card>
         
@@ -651,7 +684,7 @@ The response should only contain the list, with each item on a new line, startin
             />
             {isLoadingAi.userActivityOp && state.currentAiFeatureKey === 'userActivityOp' && <LoadingSpinner text={t('adminUsers_analyzingActivity')} />}
             {state.userActivityAnalysisResult && !isLoadingAi.userActivityOp && state.currentAiFeatureKey === 'userActivityOp' && (
-                <div className="mt-4 p-3 bg-slate-700/50 rounded max-h-96 overflow-y-auto pr-2">
+                <div className="mt-4 p-3 bg-slate-700/50 rounded max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                     <h5 className="font-semibold text-cyan-400 mb-2">{t('adminUsers_analysisResult')}</h5>
                     {typeof state.userActivityAnalysisResult === 'string' ? (
                         <p className="text-sm text-slate-200 whitespace-pre-wrap">{state.userActivityAnalysisResult}</p>

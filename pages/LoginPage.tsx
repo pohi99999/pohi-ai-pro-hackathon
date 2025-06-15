@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../App';
 import { UserRole } from '../types';
@@ -6,6 +5,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import { useLocale } from '../LocaleContext';
 import { getTranslatedUserRole } from '../locales';
+import PohiSvgLogo from '../components/PohiSvgLogo'; // Import the new SVG logo component
 
 const LoginPage: React.FC = () => {
   const { setUserRole } = useAppContext();
@@ -27,11 +27,9 @@ const LoginPage: React.FC = () => {
       </div>
       <Card className="w-full max-w-md bg-slate-800/80 backdrop-blur-md">
         <div className="p-6 sm:p-8">
-          <img 
-            src="/logo.jpg" 
-            alt="Pohi AI Pro Logo" 
-            className="mx-auto mb-8 h-24 w-24 rounded-full object-cover ring-4 ring-cyan-600"
-          />
+          <div className="mx-auto mb-8 h-24 w-24 rounded-full ring-4 ring-cyan-600 flex items-center justify-center overflow-hidden bg-slate-700">
+            <PohiSvgLogo size={80} /> {/* Use PohiSvgLogo here, adjust size if needed */}
+          </div>
           <h2 className="text-2xl font-bold text-center text-white mb-2">{t('login_welcome')}</h2>
           <p className="text-sm text-center text-slate-300 mb-8">{t('login_selectRole')}</p>
           

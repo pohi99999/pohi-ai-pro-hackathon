@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import PageTitle from '../../components/PageTitle';
 import Card from '../../components/Card';
@@ -63,34 +64,35 @@ const AdminTruckPlanningPage: React.FC = () => {
     const promptLang = locale === 'hu' ? 'Hungarian' : 'English';
 
     const prompt = `An admin of a timber company requests an optimal loading and transport plan for a 25m³ (approx. 24-ton, 13.5m flatbed) truck in ${promptLang}.
-The product to be transported is exclusively "${productName}".
+The product to be transported is exclusively "${productName}". This is a specialized timber product, potentially sourced from specific manufacturers and delivered to distinct project sites or demanding customers.
 Products are transported in "crates" of approx. 1.2m x 1.2m base. The height of a crate and the number of posts in it depend on the product's length and diameter (e.g., 4m long, 14-18cm mid-diameter posts, about 25 pcs fit in a crate, so 175 pcs means approx. 7 crates).
 The transport task involves consolidating partial orders from multiple (simulate 2-3) "Customers" onto one truck and delivering them.
 The required quantities may need to be picked up from multiple (simulate 2-3) different "Manufacturers".
-Generate simulated company names for Manufacturers and Customers.
+Generate simulated, realistic company names for Manufacturers and Customers (e.g., "Forest King Timber Kft.", "ProBuild Construction Zrt.").
 
 The response MUST be in JSON format, in ${promptLang}, and include the following fields:
 - "planDetails": string (brief description, e.g., "Optimized multi-pickup and multi-drop loading plan for ${productName} in crates, for a 25m³ truck.")
-- "items": LoadingPlanItem[] (array of loaded items, where each object represents a group of crates or a single crate for a specific Customer loaded onto the truck. Include:
+- "items": LoadingPlanItem[] (array of loaded items, where each object represents a group of crates or a single crate for a specific Customer loaded onto the truck. Each LoadingPlanItem object MUST include:
     - "name": string (e.g., "${productName} - for Customer X Ltd., 3 crates")
-    - "volumeM3": string (total volume of the crates, e.g., "8" or "8 m³")
+    - "volumeM3": string (total volume of this customer's crates, e.g., "8" or "8 m³")
     - "destinationName": string (Customer/drop-off location name, e.g., "Customer X Ltd. warehouse")
     - "dropOffOrder": number (drop-off sequence, e.g., 1 for the first to be dropped off)
-    - "loadingSuggestion": string (a full, coherent textual suggestion in ${promptLang} for loading the crates, considering LIFO for that drop-off, e.g., "Place these crates closest to the truck door as they will be unloaded first.")
+    - "loadingSuggestion": string (a full, coherent textual suggestion in ${promptLang} for loading these crates, considering LIFO for that drop-off, e.g., "Place these crates closest to the truck door as they will be unloaded first.")
     - "quality": string (optional, e.g., "Debarked, sanded, Prima A")
     - "notesOnItem": string (optional, e.g., "3 crates, total 75 pcs 4m 14-18cm posts")
   )
 - "capacityUsed": string (truck capacity utilization in percentage, e.g., "92%")
-- "waypoints": Waypoint[] (an array containing pickup locations (at Manufacturers) and drop-off locations (at Customers). Each Waypoint object includes:
+- "waypoints": Waypoint[] (an array containing all pickup locations (at Manufacturers) and all drop-off locations (at Customers) in the correct logistical sequence. Each Waypoint object MUST include:
     - "name": string (Manufacturer or Customer company name and site, e.g., "Manufacturer Big Timber Inc. - Loading Yard" or "Customer X Ltd. - Central Warehouse")
-    - "type": "'pickup'" | "'dropoff'" (type of stop)
+    - "type": "'pickup'" | "'dropoff'" (type of stop, ensure quotes are present in the JSON string value)
     - "order": number (sequence in the route, e.g., 0, 1 for pickups, 2, 3, 4 for drop-offs)
   )
 - "optimizedRouteDescription": string (a short textual description of the optimized route in ${promptLang}, considering multiple pickup and drop-off locations, e.g., "The route starts from Manufacturer A, then visits Manufacturer B pickup. Subsequently, Customer X, Customer Y, and finally Customer Z drop-off locations follow in logical order.")
 
 CRITICAL: The response must ONLY contain the JSON object described above. No other text, explanations, or markdown formatting (like \`\`\`) is allowed OUTSIDE the JSON object. The JSON must be perfectly valid. Strings within the JSON must have quotes and newlines properly escaped.
-In the "items" array, each element represents the entire shipment for a specific Customer (which can consist of multiple crates) and includes \`destinationName\` and \`dropOffOrder\` fields. The \`loadingSuggestion\` should apply to this entire shipment.
-The \`waypoints\` should include all pickup and drop-off locations in the correct order and type.`;
+It is CRITICAL that the 'items' field is an array of fully populated 'LoadingPlanItem' objects and the 'waypoints' field is an array of 'Waypoint' objects. These structures are directly used for visualization in the user interface, so their correctness and completeness are paramount.
+In the "items" array, each element represents the entire shipment for a specific Customer and includes all specified fields.
+The "waypoints" array must list all pickup and drop-off locations in the correct operational order.`;
 
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({

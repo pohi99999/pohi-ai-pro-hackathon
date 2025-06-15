@@ -7,10 +7,11 @@ import { MENU_ITEMS_CONFIG } from '../constants'; // Updated import
 import { Bars3Icon, XMarkIcon, UserCircleIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useLocale } from '../LocaleContext'; // Import useLocale
 import { getTranslatedUserRole } from '../locales'; // Import helper
+import PohiSvgLogo from './PohiSvgLogo'; // Import the new SVG logo component
 
 const PohiLogo: React.FC = () => (
   <div className="flex items-center text-2xl font-bold">
-    <img src="/logo.jpg" alt="Pohi AI Pro logo" className="h-8 w-8 mr-2 rounded-sm object-cover" />
+    <PohiSvgLogo className="h-8 w-8 mr-2" /> {/* Use PohiSvgLogo here */}
     <span className="text-cyan-400">P</span>
     <span className="text-white">ohi AI </span>
     <span className="text-cyan-400">Pro</span>

@@ -121,6 +121,14 @@ const enTranslations = {
   customerMyDemands_ai_explanationTitle: "AI Explanation:",
   customerMyDemands_error_failedToGenerateExplanation: "Failed to generate an explanation for the status.",
   customerMyDemands_error_aiStatusExplanationGeneric: "Error generating AI status explanation. Please try again later.",
+  customerMyDemands_ai_suggestStock_button: "Suggest Similar Stock (AI)",
+  customerMyDemands_ai_suggestStock_hideSuggestions: "Hide Stock Suggestions",
+  customerMyDemands_ai_suggestStock_title: "Similar Available Stock (AI Suggestions)",
+  customerMyDemands_ai_suggestStock_loading: "Searching for similar stock...",
+  customerMyDemands_ai_suggestStock_noMatches: "AI could not find any closely matching available stock items for this demand at the moment.",
+  customerMyDemands_ai_suggestStock_errorGeneric: "Error suggesting similar stock. Please try again later.",
+  customerMyDemands_ai_suggestStock_noStockAvailable: "There is currently no stock available in the system to compare against.",
+  customerMyDemands_ai_suggestStock_stockItemDetailsNotFound: "Stock item details (ID: {{id}}) not found.",
 
 
   // Manufacturer New Stock Page
@@ -314,6 +322,9 @@ const enTranslations = {
   adminDashboard_geminiAssistantSend: "Send",
   adminDashboard_geminiAssistantError: "Sorry, I couldn't process that request. Please try again or rephrase.",
   adminDashboard_geminiAssistantThinking: "Gemini is thinking...",
+  adminDashboard_geminiAssistant_userLabel: "User",
+  adminDashboard_geminiAssistant_aiLabel: "Gemini",
+  adminDashboard_geminiAssistantSystemPrompt: "You are Gemini, a helpful AI assistant for '{{platformName}}', a B2B marketplace and logistics platform for the timber industry. Users (typically administrators) will ask you about simulated platform data, market trends (general timber industry), or features of the {{platformName}} platform. Keep your answers concise, professional, and relevant to a business/timber industry context. Respond in {{language}}. If you cannot answer a question based on the provided context or general knowledge, politely state that in {{language}}.",
   adminDashboard_topCustomersByVolumeTitle: "Top Customers (by Total Ordered m³)",
   adminDashboard_topManufacturersByVolumeTitle: "Top Manufacturers (by Total Stock m³)",
   adminDashboard_loadingTopCompanies: "Loading top companies...",
@@ -395,6 +406,12 @@ const enTranslations = {
   adminUsers_simulatedSustainabilityInfoPrefix: "Simulated sustainability info:",
   adminUsers_simulatedSustainabilityInfoSuffix: "certified forest",
   adminUsers_generateSimulatedDataDescriptionSpecific: "This will generate sample demands and stock items specifically for '{{productName}}' for mock Customer and Manufacturer companies. This helps in testing matchmaking and logistics planning for this product type.",
+  adminUsers_dataGenerationReport_title: "Data Generation Report",
+  adminUsers_dataGenerationReport_product: "Generated data primarily for: {{productName}}.",
+  adminUsers_dataGenerationReport_companies: "Created {{customerCount}} new mock Customer(s) and {{manufacturerCount}} new mock Manufacturer(s).",
+  adminUsers_dataGenerationReport_demands: "Generated {{demandCount}} new Demand items.",
+  adminUsers_dataGenerationReport_stock: "Generated {{stockCount}} new Stock items.",
+  adminUsers_dataGenerationReport_info: "You can now see these items on the Matchmaking, Stock Management, and Dashboard pages.",
 
 
   // Admin Stock Management Page
@@ -453,9 +470,8 @@ const enTranslations = {
   adminMatchmaking_subtitle: "AI tools and overview of system demands",
   adminMatchmaking_generateSuggestions: "Generate Matchmaking Suggestions",
   adminMatchmaking_generateSuggestionsDescription: "Click the button for pairing suggestions based on mock demands/stock.",
-  adminMatchmaking_requestMatchmakingSuggestions: "Request Pairing Suggestions",
-  adminMatchmaking_requestAiMatchmakingSuggestions: "Automatic Pairing Suggestions (AI for {{productName}})", 
-  adminMatchmaking_aiMatchmakingDescription: "AI-based pairing suggestions based on current demands and stock, with a focus on '{{productName}}' products.", 
+  adminMatchmaking_requestMatchmakingSuggestions: "Automatic Pairing Suggestions (AI{{productName}})", 
+  adminMatchmaking_aiMatchmakingDescription: "AI-based pairing suggestions based on current demands and stock{{productName}}.", 
   adminMatchmaking_suggestedPairing: "Suggested Pairing:",
   adminMatchmaking_demand: "Demand:",
   adminMatchmaking_stock: "Stock:",
@@ -493,6 +509,7 @@ const enTranslations = {
   adminMatchmaking_pairedDemand: "Matched Demand",
   adminMatchmaking_pairedStock: "Matched Stock",
   adminMatchmaking_totalVolume: "Total m³: {{volume}}",
+  adminMatchmaking_detailsNotLoaded: "Details not loaded",
 
 
   // Admin Truck Planning Page
@@ -750,6 +767,14 @@ const huTranslations: Record<TranslationKey, string> = {
   customerMyDemands_ai_explanationTitle: "AI Magyarázat:",
   customerMyDemands_error_failedToGenerateExplanation: "Nem sikerült magyarázatot generálni az állapothoz.",
   customerMyDemands_error_aiStatusExplanationGeneric: "Hiba az AI állapotmagyarázat generálása közben. Kérjük, próbálja később.",
+  customerMyDemands_ai_suggestStock_button: "Hasonló Készlet Javaslása (AI)",
+  customerMyDemands_ai_suggestStock_hideSuggestions: "Készletjavaslatok Elrejtése",
+  customerMyDemands_ai_suggestStock_title: "Hasonló Elérhető Készletek (AI Javaslatok)",
+  customerMyDemands_ai_suggestStock_loading: "Hasonló készletek keresése...",
+  customerMyDemands_ai_suggestStock_noMatches: "Az AI jelenleg nem talált közeli egyezésű elérhető készletet ehhez az igényhez.",
+  customerMyDemands_ai_suggestStock_errorGeneric: "Hiba a hasonló készletek javaslata közben. Kérjük, próbálja később.",
+  customerMyDemands_ai_suggestStock_noStockAvailable: "Jelenleg nincs elérhető készlet a rendszerben az összehasonlításhoz.",
+  customerMyDemands_ai_suggestStock_stockItemDetailsNotFound: "Készletelem részletei (ID: {{id}}) nem találhatóak.",
 
   // Manufacturer New Stock Page
   manufacturerNewStock_title: "Új Készlet Feltöltése",
@@ -941,6 +966,9 @@ const huTranslations: Record<TranslationKey, string> = {
   adminDashboard_geminiAssistantSend: "Küldés",
   adminDashboard_geminiAssistantError: "Sajnálom, nem tudtam feldolgozni a kérést. Kérjük, próbálja újra vagy fogalmazza át.",
   adminDashboard_geminiAssistantThinking: "Gemini gondolkodik...",
+  adminDashboard_geminiAssistant_userLabel: "Felhasználó",
+  adminDashboard_geminiAssistant_aiLabel: "Gemini",
+  adminDashboard_geminiAssistantSystemPrompt: "Ön Gemini, a '{{platformName}}' nevű, faipari B2B piactér és logisztikai platform segítőkész MI asszisztense. A felhasználók (jellemzően adminisztrátorok) szimulált platformadatokról, piaci trendekről (általános faipar), vagy a {{platformName}} platform funkcióiról fognak kérdezni. Válaszait tartsa tömören, szakszerűen és a vállalati/faipari kontextusnak megfelelően. Válaszoljon {{language}} nyelven. Ha egy kérdésre nem tud válaszolni a megadott kontextus vagy általános tudása alapján, udvariasan jelezze ezt {{language}} nyelven.",
   adminDashboard_topCustomersByVolumeTitle: "Top Vevők (Összes Rendelt m³ alapján)",
   adminDashboard_topManufacturersByVolumeTitle: "Top Gyártók (Összes Készlet m³ alapján)",
   adminDashboard_loadingTopCompanies: "Top cégek betöltése...",
@@ -1022,6 +1050,12 @@ const huTranslations: Record<TranslationKey, string> = {
   adminUsers_simulatedSustainabilityInfoPrefix: "Szimulált fenntarthatósági infó:",
   adminUsers_simulatedSustainabilityInfoSuffix: "minősített erdő",
   adminUsers_generateSimulatedDataDescriptionSpecific: "Ez minta igényeket és készleteket generál kifejezetten '{{productName}}' termékre minta Vevő és Gyártó cégek számára. Ez segít a párosítás és logisztikai tervezés tesztelésében ennél a terméktípusnál.",
+  adminUsers_dataGenerationReport_title: "Adatgenerálási Jelentés",
+  adminUsers_dataGenerationReport_product: "Elsődlegesen generált adatok ehhez a termékhez: {{productName}}.",
+  adminUsers_dataGenerationReport_companies: "Létrehozva {{customerCount}} új Minta Vevő és {{manufacturerCount}} új Minta Gyártó.",
+  adminUsers_dataGenerationReport_demands: "Generálva {{demandCount}} új Igény.",
+  adminUsers_dataGenerationReport_stock: "Generálva {{stockCount}} új Készlet.",
+  adminUsers_dataGenerationReport_info: "Ezeket az elemeket most megtekintheti a Párosítás, Készletkezelés és Irányítópult oldalakon.",
 
 
   // Admin Stock Management Page
@@ -1073,15 +1107,15 @@ const huTranslations: Record<TranslationKey, string> = {
   adminStock_chart_statusTitle: "Készlet Státusz Szerint",
   adminStock_chart_diameterTypeTitle: "Készlet Átmérő Típus Szerint",
   adminStock_totalVolume: "Összesen m³: {{volume}}",
+  
 
   // Admin Matchmaking Page
   adminMatchmaking_title: "Párosítás és Vitarendezés",
   adminMatchmaking_subtitle: "AI eszközök és rendszerigények áttekintése",
   adminMatchmaking_generateSuggestions: "Párosítási Javaslatok Generálása",
   adminMatchmaking_generateSuggestionsDescription: "Kattintson a gombra minta igények/készletek alapján történő párosítási javaslatokért.",
-  adminMatchmaking_requestMatchmakingSuggestions: "Párosítási Javaslatok Kérése",
-  adminMatchmaking_requestAiMatchmakingSuggestions: "Automatikus Párosítási Javaslatok (AI - {{productName}})",
-  adminMatchmaking_aiMatchmakingDescription: "AI-alapú párosítási javaslatok az aktuális igények és készletek alapján, fókuszban a(z) '{{productName}}' termékekkel.",
+  adminMatchmaking_requestMatchmakingSuggestions: "Automatikus Párosítási Javaslatok (AI{{productName}})",
+  adminMatchmaking_aiMatchmakingDescription: "AI-alapú párosítási javaslatok az aktuális igények és készletek alapján{{productName}}.",
   adminMatchmaking_suggestedPairing: "Javasolt Párosítás:",
   adminMatchmaking_demand: "Igény:",
   adminMatchmaking_stock: "Készlet:",
@@ -1119,7 +1153,7 @@ const huTranslations: Record<TranslationKey, string> = {
   adminMatchmaking_pairedDemand: "Párosított Igény",
   adminMatchmaking_pairedStock: "Párosított Készlet",
   adminMatchmaking_totalVolume: "Összesen m³: {{volume}}",
-
+  adminMatchmaking_detailsNotLoaded: "Részletek nem töltődtek be",
 
   // Admin Truck Planning Page
   adminTruckPlanning_title: "Kamiontervezés és Logisztika",

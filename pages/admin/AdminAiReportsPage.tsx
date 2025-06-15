@@ -13,7 +13,9 @@ import {
   InformationCircleIcon,
   PlusCircleIcon,
   CheckBadgeIcon,
-  AcademicCapIcon
+  AcademicCapIcon,
+  ArchiveBoxIcon, // For New Stock Items
+  UserGroupIcon // For New Demands (representing customers)
 } from '@heroicons/react/24/outline';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
@@ -133,40 +135,37 @@ const AdminAiReportsPage: React.FC = () => {
                 title={t('adminAiReports_aiSummaryTitle', { month: platformSummary.month })}
                 bodyClassName="space-y-4 !pt-4 !pb-4" 
                 className={`mt-4 border ${errorMessage && platformSummary.aiInterpretation !== MOCK_AI_RESPONSES.monthlyPlatformSummary.aiInterpretation ? 'border-red-600' : 'border-slate-700'}`}
-                titleClassName={errorMessage && platformSummary.aiInterpretation !== MOCK_AI_RESPONSES.monthlyPlatformSummary.aiInterpretation ? 'text-red-400' : ''}
+                titleClassName={errorMessage && platformSummary.aiInterpretation !== MOCK_AI_RESPONSES.monthlyPlatformSummary.aiInterpretation ? 'text-red-400' : 'text-cyan-400'}
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-slate-700 rounded-lg shadow">
-                    <div className="flex items-center text-blue-400">
-                      <PlusCircleIcon className="h-6 w-6 mr-2 flex-shrink-0" />
-                      <span className="text-sm font-medium">{t('adminAiReports_newDemands')}</span>
-                    </div>
-                    <p className="text-2xl font-semibold text-white mt-1">{platformSummary.newDemands}</p>
+                  {/* Stat Card for New Demands */}
+                  <div className="p-4 bg-slate-700 rounded-lg shadow-lg flex flex-col items-center justify-center text-center hover:bg-slate-600/70 transition-colors">
+                    <UserGroupIcon className="h-10 w-10 text-sky-400 mb-2" />
+                    <span className="text-sm font-medium text-slate-300">{t('adminAiReports_newDemands')}</span>
+                    <p className="text-3xl font-semibold text-white mt-1">{platformSummary.newDemands}</p>
                   </div>
                   
-                  <div className="p-4 bg-slate-700 rounded-lg shadow">
-                    <div className="flex items-center text-green-400">
-                      <PlusCircleIcon className="h-6 w-6 mr-2 flex-shrink-0" />
-                      <span className="text-sm font-medium">{t('adminAiReports_newStockItems')}</span>
-                    </div>
-                    <p className="text-2xl font-semibold text-white mt-1">{platformSummary.newStockItems}</p>
+                  {/* Stat Card for New Stock Items */}
+                  <div className="p-4 bg-slate-700 rounded-lg shadow-lg flex flex-col items-center justify-center text-center hover:bg-slate-600/70 transition-colors">
+                    <ArchiveBoxIcon className="h-10 w-10 text-emerald-400 mb-2" />
+                    <span className="text-sm font-medium text-slate-300">{t('adminAiReports_newStockItems')}</span>
+                    <p className="text-3xl font-semibold text-white mt-1">{platformSummary.newStockItems}</p>
                   </div>
                   
-                  <div className="p-4 bg-slate-700 rounded-lg shadow">
-                    <div className="flex items-center text-purple-400">
-                      <CheckBadgeIcon className="h-6 w-6 mr-2 flex-shrink-0" />
-                      <span className="text-sm font-medium">{t('adminAiReports_successfulMatches')}</span>
-                    </div>
-                    <p className="text-2xl font-semibold text-white mt-1">{platformSummary.successfulMatches}</p>
+                  {/* Stat Card for Successful Matches */}
+                  <div className="p-4 bg-slate-700 rounded-lg shadow-lg flex flex-col items-center justify-center text-center hover:bg-slate-600/70 transition-colors">
+                    <CheckBadgeIcon className="h-10 w-10 text-purple-400 mb-2" />
+                    <span className="text-sm font-medium text-slate-300">{t('adminAiReports_successfulMatches')}</span>
+                    <p className="text-3xl font-semibold text-white mt-1">{platformSummary.successfulMatches}</p>
                   </div>
                 </div>
                 
-                <div className="mt-4 p-4 bg-slate-700/50 rounded-lg">
+                <div className="mt-6 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
                   <div className="flex items-center text-yellow-400 mb-2">
                     <AcademicCapIcon className="h-6 w-6 mr-2 flex-shrink-0" />
                     <h4 className="text-md font-semibold">{t('adminAiReports_aiInterpretation')}</h4>
                   </div>
-                  <p className="text-sm text-slate-200 whitespace-pre-wrap">{platformSummary.aiInterpretation}</p>
+                  <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{platformSummary.aiInterpretation}</p>
                 </div>
               </Card>
             )}

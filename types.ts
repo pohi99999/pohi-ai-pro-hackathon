@@ -1,3 +1,4 @@
+
 // Import for local usage within this file
 // Note: TranslationKey will be imported from the updated locales.ts
 import type { TranslationKey } from './locales'; 
@@ -145,6 +146,13 @@ export interface MatchmakingSuggestion {
   similarityScore?: number; 
 }
 
+export interface AiStockSuggestion {
+  stockItemId: string;
+  reason: string;
+  matchStrength?: string;
+  similarityScore?: number;
+}
+
 export interface DisputeResolutionSuggestion {
   id:string;
   suggestion: string;
@@ -244,4 +252,12 @@ export interface MonthlyPlatformSummaryData {
   newStockItems: number;
   successfulMatches: number;
   aiInterpretation: string;
+}
+
+export interface GeneratedDataReport {
+  newCustomers: number;
+  newManufacturers: number;
+  newDemands: number;
+  newStockItems: number;
+  productName: string;
 }

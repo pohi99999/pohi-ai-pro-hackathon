@@ -1,16 +1,18 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import PageTitle from '../../components/PageTitle';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { DemandItem, DemandStatus } from '../../types';
-import { DocumentTextIcon, InformationCircleIcon, TagIcon, CalendarDaysIcon, HashtagIcon, ArchiveBoxIcon, BeakerIcon, SparklesIcon, BuildingStorefrontIcon } from '@heroicons/react/24/outline';
+import AiFeatureButton from '../../components/AiFeatureButton'; // Added
+import { DemandItem, DemandStatus, StockItem, StockStatus, AiStockSuggestion } from '../../types'; // Added StockItem, StockStatus, AiStockSuggestion
+import { DocumentTextIcon, InformationCircleIcon, TagIcon, CalendarDaysIcon, HashtagIcon, ArchiveBoxIcon, BeakerIcon, SparklesIcon, BuildingStorefrontIcon, CubeIcon } from '@heroicons/react/24/outline'; // Added CubeIcon
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { useLocale } from '../../LocaleContext';
-import { getTranslatedDemandStatus } from '../../locales';
-import { CUSTOMER_DEMANDS_STORAGE_KEY } from '../../constants';
+import { getTranslatedDemandStatus, getTranslatedStockStatus } from '../../locales'; // Added getTranslatedStockStatus
+import { CUSTOMER_DEMANDS_STORAGE_KEY, MANUFACTURER_STOCK_STORAGE_KEY } from '../../constants'; // Added MANUFACTURER_STOCK_STORAGE_KEY
 
 
 let ai: GoogleGenAI | null = null;
@@ -43,10 +45,16 @@ const getStatusBadgeColor = (status: DemandStatus): string => {
 const CustomerMyDemandsPage: React.FC = () => { 
   const { t, locale } = useLocale();
   const [demands, setDemands] = useState<DemandItem[]>([]);
+  const [allStockItems, setAllStockItems] = useState<StockItem[]>([]); // New state for all stock items
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDemandIdForAi, setSelectedDemandIdForAi] = useState<string | null>(null);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<string | null>(null);
   const [isAiLoadingForDemand, setIsAiLoadingForDemand] = useState<string | null>(null);
+
+  // New state for "Suggest Similar Stock" feature
+  const [selectedDemandIdForStockSuggestion, setSelectedDemandIdForStockSuggestion] = useState<string | null>(null);
+  const [suggestedStock, setSuggestedStock] = useState<AiStockSuggestion[] | string | null>(null);
+  const [isAiLoadingForStockSuggestion, setIsAiLoadingForStockSuggestion] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -55,18 +63,37 @@ const CustomerMyDemandsPage: React.FC = () => {
       const storedDemandsRaw = localStorage.getItem(CUSTOMER_DEMANDS_STORAGE_KEY);
       if (storedDemandsRaw) {
         const parsedDemands: DemandItem[] = JSON.parse(storedDemandsRaw);
-        // For Customer's "My Demands", only show items they submitted themselves (not by admin for another company)
-        // This simple check assumes direct submission if `submittedByCompanyId` is missing.
         const ownDemands = parsedDemands.filter(item => !item.submittedByCompanyId);
-
         ownDemands.sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
         setDemands(ownDemands);
       }
+      // Load all stock items for the "Suggest Similar Stock" feature
+      const storedStockRaw = localStorage.getItem(MANUFACTURER_STOCK_STORAGE_KEY);
+      if (storedStockRaw) {
+        const parsedStock: StockItem[] = JSON.parse(storedStockRaw);
+        setAllStockItems(parsedStock.filter(s => s.status === StockStatus.AVAILABLE));
+      }
+
     } catch (error) {
-      console.error("Error loading demands:", error);
+      console.error("Error loading demands or stock:", error);
     }
     setIsLoading(false);
   }, []);
+
+  const parseJsonFromGeminiResponse = <T,>(text: string, featureNameKey: string): T | string => {
+    let jsonStr = text.trim();
+    const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+    const match = jsonStr.match(fenceRegex);
+    if (match && match[2]) {
+      jsonStr = match[2].trim();
+    }
+    try {
+      return JSON.parse(jsonStr) as T;
+    } catch (e) {
+      console.error(`Failed to parse JSON response for ${t(featureNameKey as any)}:`, e, "Raw text:", text);
+      return t('customerNewDemand_error_failedToParseJson', { featureName: t(featureNameKey as any), rawResponse: text.substring(0,100) });
+    }
+  };
 
   const generateDemandStatusExplanationWithGemini = async (demand: DemandItem): Promise<string> => {
     if (!ai) {
@@ -110,11 +137,91 @@ Task: Provide a 2-3 sentence generalized explanation of what this "${translatedS
     setIsAiLoadingForDemand(demand.id);
     setSelectedDemandIdForAi(demand.id); 
     setAiAnalysisResult(null); 
+    // Clear other AI feature results
+    setSelectedDemandIdForStockSuggestion(null);
+    setSuggestedStock(null);
 
     const result = await generateDemandStatusExplanationWithGemini(demand);
     
     setAiAnalysisResult(result);
     setIsAiLoadingForDemand(null);
+  };
+
+  const generateSimilarStockSuggestionsWithGemini = async (demand: DemandItem): Promise<AiStockSuggestion[] | string> => {
+    if (!ai) return t('customerNewDemand_error_aiUnavailable');
+    
+    const availableStock = allStockItems.filter(s => s.status === StockStatus.AVAILABLE);
+    if (availableStock.length === 0) {
+      return t('customerMyDemands_ai_suggestStock_noStockAvailable');
+    }
+    const promptLang = locale === 'hu' ? 'Hungarian' : 'English';
+
+    const MAX_STOCK_ITEMS_TO_SEND = 30; // Limit the number of stock items sent in the prompt
+    const relevantStockData = availableStock.slice(0, MAX_STOCK_ITEMS_TO_SEND).map(s => ({
+        id: s.id,
+        diameterType: s.diameterType,
+        diameterFrom: s.diameterFrom,
+        diameterTo: s.diameterTo,
+        length: s.length,
+        quantity: s.quantity,
+        price: s.price,
+        notes: s.notes?.substring(0,100), // Truncate notes
+        sustainabilityInfo: s.sustainabilityInfo?.substring(0,100), // Truncate info
+        uploadedByCompanyName: s.uploadedByCompanyName
+    }));
+
+    const prompt = `A customer on a timber trading platform has the following demand. Find 1-3 similar or alternative available stock items from the provided list.
+For each suggestion, provide "stockItemId", a "reason" (why it's a good match/alternative, considering dimensions, quantity, price, notes), "matchStrength" (e.g., "High", "Medium", "Low", or a numeric percentage like "85%"), and "similarityScore" (numeric, 0.0-1.0).
+Respond in JSON format as an array of objects in ${promptLang}.
+
+Customer Demand:
+- ID: ${demand.id}
+- Diameter Type: ${demand.diameterType}
+- Diameter: ${demand.diameterFrom}-${demand.diameterTo} cm
+- Length: ${demand.length} m
+- Quantity: ${demand.quantity} pcs
+- Notes: ${demand.notes || 'N/A'}
+
+Available Stock (Top ${relevantStockData.length} items):
+${JSON.stringify(relevantStockData, null, 2)}
+
+The response MUST ONLY contain the JSON array.`;
+
+    try {
+      const response: GenerateContentResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-04-17",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      const parsedResult = parseJsonFromGeminiResponse<AiStockSuggestion[]>(response.text, "customerMyDemands_ai_suggestStock_title");
+      return parsedResult;
+    } catch (error) {
+      console.error("Error generating similar stock suggestions:", error);
+      return t('customerMyDemands_ai_suggestStock_errorGeneric');
+    }
+  };
+
+  const handleSuggestSimilarStock = async (demand: DemandItem) => {
+    if (selectedDemandIdForStockSuggestion === demand.id && suggestedStock) {
+        setSelectedDemandIdForStockSuggestion(null);
+        setSuggestedStock(null);
+        setIsAiLoadingForStockSuggestion(null);
+        return;
+    }
+    setIsAiLoadingForStockSuggestion(demand.id);
+    setSelectedDemandIdForStockSuggestion(demand.id);
+    setSuggestedStock(null);
+    // Clear other AI feature results
+    setSelectedDemandIdForAi(null);
+    setAiAnalysisResult(null);
+
+    const result = await generateSimilarStockSuggestionsWithGemini(demand);
+    setSuggestedStock(result);
+    setIsAiLoadingForStockSuggestion(null);
+  };
+  
+  const getStockItemById = (id: string): StockItem | undefined => {
+    return allStockItems.find(stock => stock.id === id);
   };
 
 
@@ -192,19 +299,27 @@ Task: Provide a 2-3 sentence generalized explanation of what this "${translatedS
                 </div>
               </div>
               
-              <div className="p-4 border-t border-slate-700 bg-slate-800/50">
-                <Button
+              <div className="p-4 border-t border-slate-700 bg-slate-800/50 space-y-2">
+                <AiFeatureButton
                   onClick={() => handleAiDemandAnalysis(demand)}
                   isLoading={isAiLoadingForDemand === demand.id}
-                  disabled={!ai || (isAiLoadingForDemand !== null && isAiLoadingForDemand !== demand.id)}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-cyan-400 border border-cyan-600 hover:bg-cyan-500/20"
+                  disabled={!ai || (isAiLoadingForDemand !== null && isAiLoadingForDemand !== demand.id) || (isAiLoadingForStockSuggestion !== null)}
+                  className="w-full"
                   leftIcon={<SparklesIcon className="h-4 w-4 text-yellow-400"/>}
                   title={selectedDemandIdForAi === demand.id && aiAnalysisResult ? t('customerMyDemands_ai_hideExplanation') : t('customerMyDemands_ai_requestStatusExplanation')}
-                >
-                  {selectedDemandIdForAi === demand.id && aiAnalysisResult ? t('customerMyDemands_ai_hideExplanation') : t('customerMyDemands_ai_requestStatusExplanation')}
-                </Button>
+                  text={selectedDemandIdForAi === demand.id && aiAnalysisResult ? t('customerMyDemands_ai_hideExplanation') : t('customerMyDemands_ai_requestStatusExplanation')}
+                />
+
+                <AiFeatureButton
+                  onClick={() => handleSuggestSimilarStock(demand)}
+                  isLoading={isAiLoadingForStockSuggestion === demand.id}
+                  disabled={!ai || (isAiLoadingForStockSuggestion !== null && isAiLoadingForStockSuggestion !== demand.id) || (isAiLoadingForDemand !== null)}
+                  className="w-full"
+                  leftIcon={<CubeIcon className="h-4 w-4 text-green-400"/>}
+                  title={selectedDemandIdForStockSuggestion === demand.id && suggestedStock ? t('customerMyDemands_ai_suggestStock_hideSuggestions') : t('customerMyDemands_ai_suggestStock_button')}
+                  text={selectedDemandIdForStockSuggestion === demand.id && suggestedStock ? t('customerMyDemands_ai_suggestStock_hideSuggestions') : t('customerMyDemands_ai_suggestStock_button')}
+                />
+
 
                 {isAiLoadingForDemand === demand.id && (
                   <div className="mt-3">
@@ -217,6 +332,45 @@ Task: Provide a 2-3 sentence generalized explanation of what this "${translatedS
                     <h5 className="text-sm font-semibold text-cyan-300 mb-1">{t('customerMyDemands_ai_explanationTitle')}</h5>
                     <p className={`text-xs whitespace-pre-wrap ${aiAnalysisResult.includes(t('error')) || aiAnalysisResult.includes("Hiba") ? 'text-red-300' : 'text-slate-200'}`}>{aiAnalysisResult}</p>
                   </div>
+                )}
+
+                {isAiLoadingForStockSuggestion === demand.id && (
+                    <div className="mt-3">
+                        <LoadingSpinner size="sm" text={t('customerMyDemands_ai_suggestStock_loading')} />
+                    </div>
+                )}
+
+                {selectedDemandIdForStockSuggestion === demand.id && suggestedStock && !isAiLoadingForStockSuggestion && (
+                    <div className="mt-3 p-3 rounded bg-slate-700">
+                        <h5 className="text-sm font-semibold text-cyan-300 mb-2">{t('customerMyDemands_ai_suggestStock_title')}</h5>
+                        {typeof suggestedStock === 'string' ? (
+                            <p className="text-xs text-red-300">{suggestedStock}</p>
+                        ) : suggestedStock.length === 0 ? (
+                            <p className="text-xs text-slate-300">{t('customerMyDemands_ai_suggestStock_noMatches')}</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {suggestedStock.map(suggestion => {
+                                    const stockItemDetails = getStockItemById(suggestion.stockItemId);
+                                    return (
+                                        <li key={suggestion.stockItemId} className="p-2 bg-slate-600/70 rounded-md text-xs">
+                                            {stockItemDetails ? (
+                                                <>
+                                                    <p className="font-semibold text-emerald-300">{stockItemDetails.diameterType}, Ø{stockItemDetails.diameterFrom}-{stockItemDetails.diameterTo}cm, {stockItemDetails.length}m, {stockItemDetails.quantity}pcs</p>
+                                                    {stockItemDetails.uploadedByCompanyName && <p className="text-slate-400">{t('adminMatchmaking_byCompany', { companyName: stockItemDetails.uploadedByCompanyName })}</p>}
+                                                    {stockItemDetails.price && <p className="text-slate-300">{t('manufacturerMyStock_price')}: {stockItemDetails.price}</p>}
+                                                </>
+                                            ) : (
+                                                <p className="text-slate-400">{t('customerMyDemands_ai_suggestStock_stockItemDetailsNotFound', { id: suggestion.stockItemId })}</p>
+                                            )}
+                                            <p className="mt-1 text-slate-300"><strong className="text-yellow-400">{t('adminMatchmaking_reason')}:</strong> {suggestion.reason}</p>
+                                            {suggestion.matchStrength && <p className="text-slate-300"><strong className="text-yellow-400">{t('adminMatchmaking_matchStrength')}:</strong> {suggestion.matchStrength}</p>}
+                                            {suggestion.similarityScore !== undefined && <p className="text-slate-300"><strong className="text-yellow-400">{t('adminMatchmaking_similarityScoreLabel')}:</strong> {(suggestion.similarityScore * 100).toFixed(0)}%</p>}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
                 )}
               </div>
             </Card>
